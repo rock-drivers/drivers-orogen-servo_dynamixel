@@ -95,30 +95,18 @@ bool Task::configureHook()
 	    return false;
 
 	// set the limits 
-	// TODO make this configurable
+	// TODO make this configurable 
 	if (!dynamixel_.setControlTableEntry("CW Angle Limit", 0))
 	    return false;
 	if(!dynamixel_.setControlTableEntry("CCW Angle Limit", 1023))
 	    return false;
 	if (!dynamixel_.setControlTableEntry("Torque Limit", 1023))
 	    return false;
+	if(!dynamixel_.setControlTableEntry("Moving Speed", 1023))
+	    return false;
     }
 
-    /*
-    //set speed
-    //0.111 is the factor for converting to RPM according to the manual
-    //RPM / 0.111 = dyna
-    int speed_dyna = _moving_speed.value() / M_PI  * 60  / 0.111;
-    std::cout << "Moving speed is " << _moving_speed.value() << " " << speed_dyna << std::endl;
-    if(speed_dyna <= 0)
-	speed_dyna = 1;
-
-    if(speed_dyna > (1<<23))
-	speed_dyna = (1<<23);
-
-    if(!dynamixel_.setControlTableEntry("Moving Speed", speed_dyna))
-	return false;
-    */
+    return true;
 }
 
 bool Task::startHook()
@@ -140,9 +128,9 @@ void Task::updateHook()
 	{
 	    // try to find the name of the joint in the map
 	    std::map<std::string, ServoStatus>::iterator mi = 
-		servo_status.find( cmd.names[cidx] );
+		status_map.find( cmd.names[cidx] );
 
-	    if( mi == servo_status.end() )
+	    if( mi == status_map.end() )
 	    {
 		LOG_ERROR_S 
 		    << "There is no servo with the name '"
@@ -200,7 +188,7 @@ void Task::updateHook()
     _status_samples.write( joint_status );
 }
 
-void readJointStatus()
+void Task::readJointStatus()
 {
     // setup the result type
     if( joint_status.size() != status_map.size() );
@@ -208,14 +196,19 @@ void readJointStatus()
 	joint_status.resize( status_map.size() );
 
 	// fill in the joint names
+	size_t i = 0;
 	for( std::map<std::string, ServoStatus>::iterator mi = 
 		status_map.begin(); mi != status_map.end(); ++mi )
 	{
 	    joint_status.names[i] = mi->first;
+	    ++i;
 	}
     }
 
     // now read out the status of all the servos
+    // and write into the joint_status array
+    // we use the same order as the status_map
+    size_t i = 0;
     for( std::map<std::string, ServoStatus>::iterator mi = 
 	    status_map.begin(); mi != status_map.end(); ++mi )
     {
@@ -233,7 +226,8 @@ void readJointStatus()
 	    throw std::runtime_error("Could not read servo position value");
 
 	// scale and set in the result structure
-	joint_status.state[i].position = position / sc.scale - sc.zero;
+	joint_status.states[i].position = position / sc.scale - sc.zero;
+	++i;
     }
 }
 
