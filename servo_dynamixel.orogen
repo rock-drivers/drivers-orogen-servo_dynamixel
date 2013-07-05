@@ -1,0 +1,29 @@
+name "servo_dynamixel"
+# Optionally declare the version number
+# version "0.1"
+
+using_library "dynamixel"
+import_types_from "base"
+import_types_from "servo_dynamixelTypes.hpp"
+
+task_context "Task" do
+    needs_configuration
+
+    # the system device name for the servo controller command
+    property "device", "/std/string"
+
+    # configuration of the servo chain 
+    # adds the mapping of name to servo id, and also sets the 
+    # dynamixel specific configuration values
+    property "servo_config", "std/vector</servo_dynamixel/ServoConfiguration>"
+
+    # command values for the servos
+    # the names in the type need to match the configured values
+    input_port "command", "base/commands/Joints"
+
+    # status values for all the servos that have been configured 
+    output_port "status_samples", "base/samples/Joints"
+
+    periodic 0.1
+end
+

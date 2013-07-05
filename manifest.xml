@@ -1,0 +1,9 @@
+<package>
+  <description brief="Module to control dynamixel servos">
+  Module to control a chain of dynamixel servos. This module replaces the dynamixel component.
+  </description>
+  <author>Jakob Schwendner/jakob.schwendner@dfki.de</author>
+  <license>LGPL</license>
+  <depend package="base/types" />
+  <depend package="drivers/dynamixel" />
+</package>
