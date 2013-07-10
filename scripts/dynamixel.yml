@@ -1,6 +1,6 @@
 --- name:default
 servo_config:
-  - name: distal_grip
+  - name: proximal_grip
     id: 1
     cwComplianceMargin: 1
     ccwComplianceMargin: 1
@@ -11,7 +11,7 @@ servo_config:
     positionOffset: 0
     speedScale: 139.58 # 1023/(70/60*3.141*2) 
     effortScale: 361.48 # 1023/2.83 
-  - name: proximal_grip
+  - name: distal_grip
     id: 2
     cwComplianceMargin: 1
     ccwComplianceMargin: 1
