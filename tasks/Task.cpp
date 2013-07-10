@@ -33,8 +33,8 @@ bool Task::configureHook()
 
     // try to open the device first
     Dynamixel::Configuration dynamixel_config;
-    dynamixel_config.mFilename= ( _device.value() );
-    dynamixel_config.mBaudrate = 57600;
+    dynamixel_config.mFilename= _device.value();
+    dynamixel_config.mBaudrate = _baudrate.value();
     dynamixel_.setTimeout(10000);
 
     if(!dynamixel_.init(&dynamixel_config))

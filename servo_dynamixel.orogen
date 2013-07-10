@@ -12,6 +12,9 @@ task_context "Task" do
     # the system device name for the servo controller command
     property "device", "/std/string"
 
+    # the baudrate for the communication with the servos
+    property "baudrate", "/int", 57600
+
     # configuration of the servo chain 
     # adds the mapping of name to servo id, and also sets the 
     # dynamixel specific configuration values
