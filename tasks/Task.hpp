@@ -14,8 +14,10 @@ namespace servo_dynamixel {
     {
 	int id;
 	bool enabled;
-	float zero;
-	float scale;
+	float positionScale;
+	float positionOffset;
+	float speedScale;
+	float effortScale;
     };
 
     /*! \class Task 

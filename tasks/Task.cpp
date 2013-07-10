@@ -53,8 +53,10 @@ bool Task::configureHook()
 	ServoStatus status;
 	status.id = id;
 	status.enabled = false;
-	status.zero = sc.zero;
-	status.scale = sc.scale;
+	status.positionOffset = sc.positionOffset;
+	status.positionScale = sc.positionScale;
+	status.speedScale = sc.speedScale;
+	status.effortScale = sc.effortScale;
 	status_map[sc.name] = status;
 	
 	// add it to the driver
@@ -78,10 +80,6 @@ bool Task::configureHook()
 	   << " at id " << sid 
 	   << std::endl;
 
-	// disable the torque, so make the servo passive
-	if(!dynamixel_.setControlTableEntry("Torque Enable", 0))
-	    return false;
-
 	// set control value A,B,C,D,E (see RX-28 manual)
 	if (!dynamixel_.setControlTableEntry("CW Compliance Slope", sc.cwComplianceSlope ))
 	    return false;
@@ -100,10 +98,15 @@ bool Task::configureHook()
 	    return false;
 	if(!dynamixel_.setControlTableEntry("CCW Angle Limit", 1023))
 	    return false;
-	if (!dynamixel_.setControlTableEntry("Torque Limit", 1023))
-	    return false;
 	if(!dynamixel_.setControlTableEntry("Moving Speed", 1023))
 	    return false;
+	if (!dynamixel_.setControlTableEntry("Torque Limit", 1023))
+	    return false;
+
+	// disable the torque, so make the servo passive
+	if(!dynamixel_.setControlTableEntry("Torque Enable", 0))
+	    return false;
+
     }
 
     return true;
@@ -159,13 +162,13 @@ void Task::updateHook()
 	    }
 
 	    // get target joint state
-	    base::JointState &target( cmd.states[cidx] );
+	    const base::JointState &target( cmd[cidx] );
 
 	    if( target.hasPosition() )
 	    {
 		// convert the angular position given in radians to
 		// the position range of the dynamixel
-		uint16_t pos = (target.position + status.zero) * status.scale;
+		uint16_t pos = (target.position + status.positionOffset) * status.positionScale;
 
 		// and write the updated goal position
 		if(!dynamixel_.setGoalPosition( pos ))
@@ -182,9 +185,9 @@ void Task::updateHook()
 	}
     }
 
+    // get joint status and write to output port 
     readJointStatus();
-
-    // write to output port
+    joint_status.time = base::Time::now();
     _status_samples.write( joint_status );
 }
 
@@ -220,13 +223,24 @@ void Task::readJointStatus()
 	// and make it active
 	dynamixel_.setServoActive(id);
 
-	// read the position values
+	// read the position values and write the scaled version to the joints status
 	uint16_t position;
 	if( !dynamixel_.getPresentPosition( &position ) )
 	    throw std::runtime_error("Could not read servo position value");
+	joint_status[i].position = position / sc.positionScale - sc.positionOffset;
 
-	// scale and set in the result structure
-	joint_status.states[i].position = position / sc.scale - sc.zero;
+	// same for speed
+	uint16_t speed;
+	if( !dynamixel_.getControlTableEntry( "Present Speed", &speed ) )
+	    throw std::runtime_error("Could not read servo speed value");
+	joint_status[i].speed = (speed > 1023 ? 1023 - speed : speed ) / sc.speedScale; 
+
+	// and the load value
+	uint16_t effort;
+	if( !dynamixel_.getControlTableEntry( "Present Load", &effort ) )
+	    throw std::runtime_error("Could not read servo load value");
+	joint_status[i].effort = (effort > 1023 ? 1023 - effort : effort ) / sc.effortScale;
+
 	++i;
     }
 }

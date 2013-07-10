@@ -1,0 +1,24 @@
+--- name:default
+servo_config:
+  - name: distal_grip
+    id: 1
+    cwComplianceMargin: 1
+    ccwComplianceMargin: 1
+    cwComplianceSlope: 32
+    ccwComplianceSlope: 32
+    punch: 32
+    positionScale: 195.383 # 1023/(300/180*3.141) 
+    positionOffset: 0
+    speedScale: 139.58 # 1023/(70/60*3.141*2) 
+    effortScale: 361.48 # 1023/2.83 
+  - name: proximal_grip
+    id: 2
+    cwComplianceMargin: 1
+    ccwComplianceMargin: 1
+    cwComplianceSlope: 32
+    ccwComplianceSlope: 32
+    punch: 32
+    positionScale: 195.383  
+    positionOffset: 0
+    speedScale: 139.58 
+    effortScale: 361.48

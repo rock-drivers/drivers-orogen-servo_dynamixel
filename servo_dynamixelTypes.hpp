@@ -64,10 +64,26 @@ struct ServoConfiguration
     /** minimum current being supplied to the motor during action */
     uint16_t punch;
 
-    /** scale value to convert ticks to radians */
-    float scale;
-    /** zero offset value in radians */
-    float zero;
+    /** 
+     * Scale factor, which converts radians to dynamixel ticks.
+     * pos_ticks = (pos_rad + positionOffset) * positionScale
+     */  
+    float positionScale;
+    /** 
+     * Offset which is used for interpreting the input position angle values
+     * pos_ticks = (pos_rad + positionOffset) * positionScale
+     */  
+    float positionOffset;
+    /**
+     * Speed factor, converting rad/s to dynamixel tick values
+     * speed_ticks = speed * speedScale
+     */
+    float speedScale;
+    /** 
+     * Effort factor, converting Nm to load ticks.
+     * load_ticks = effort * effortScale 
+     */
+    float effortScale;
 
     void checkValid() const
     {
