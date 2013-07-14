@@ -152,23 +152,24 @@ void Task::updateHook()
 	    // and make it active
 	    dynamixel_.setServoActive(id);
 
-	    // enable servo if necessary
-	    if( status.enabled == false )
-	    {
-		// enable the servo 
-		dynamixel_.setControlTableEntry("Torque Enable", 1);
-
-		status.enabled = true;
-	    }
-
 	    // get target joint state
 	    const base::JointState &target( cmd[cidx] );
 
 	    if( target.hasPosition() )
 	    {
+		// enable servo if necessary
+		if( status.enabled == false )
+		{
+		    // enable the servo 
+		    dynamixel_.setControlTableEntry("Torque Enable", 1);
+
+		    status.enabled = true;
+		}
+
 		// convert the angular position given in radians to
 		// the position range of the dynamixel
-		uint16_t pos = (target.position + status.positionOffset) * status.positionScale;
+		float pos_f = (target.position + status.positionOffset) * status.positionScale;
+		uint16_t pos = std::max( std::min( pos_f, 1023.0f ), 0.0f );
 
 		// and write the updated goal position
 		if(!dynamixel_.setGoalPosition( pos ))
@@ -178,9 +179,27 @@ void Task::updateHook()
 		    throw std::runtime_error("could not set target position for servo");
 		}
 	    }
-	    else
+
+	    if( target.hasEffort() )
 	    {
-		LOG_WARN_S << "Got a command which did not contain a position value." << std::endl;
+		float effort_f = target.effort * status.effortScale;
+		uint16_t effort = std::max( std::min( effort_f, 1023.0f ), 0.0f );
+		if( effort == 0 )
+		{
+		    // disable the servo 
+		    dynamixel_.setControlTableEntry("Torque Enable", 0);
+		    status.enabled = false;
+		}
+		else
+		{
+		    if (!dynamixel_.setControlTableEntry("Torque Limit", effort))
+			throw std::runtime_error("could not set target effort for servo");
+		}
+	    }
+
+	    if( !(target.hasPosition() || target.hasEffort()) )
+	    {
+		LOG_WARN_S << "Got a command which did not contain a position or effort value." << std::endl;
 	    }
 	}
     }
