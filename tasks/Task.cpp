@@ -94,10 +94,15 @@ bool Task::configureHook()
 
 	// set the limits 
 	// TODO make this configurable 
+	/** 
+	 * do not set the angle limits since they should stay 
+	 * as in the eeprom unless explicitely set
+	 *
 	if (!dynamixel_.setControlTableEntry("CW Angle Limit", 0))
 	    return false;
 	if(!dynamixel_.setControlTableEntry("CCW Angle Limit", 1023))
 	    return false;
+	*/
 	if(!dynamixel_.setControlTableEntry("Moving Speed", 1023))
 	    return false;
 	if (!dynamixel_.setControlTableEntry("Torque Limit", 1023))
@@ -180,6 +185,14 @@ void Task::updateHook()
 		}
 	    }
 
+	    if( target.hasSpeed() )
+	    {
+		float speed_f = target.speed * status.speedScale;
+		uint16_t speed = std::max( std::min( speed_f, 1023.0f ), 0.0f );
+		if (!dynamixel_.setControlTableEntry("Moving Speed", speed))
+		    throw std::runtime_error("could not set speed value for servo");
+	    }
+
 	    if( target.hasEffort() )
 	    {
 		float effort_f = target.effort * status.effortScale;
@@ -197,7 +210,7 @@ void Task::updateHook()
 		}
 	    }
 
-	    if( !(target.hasPosition() || target.hasEffort()) )
+	    if( !(target.hasPosition() || target.hasEffort() || target.hasSpeed()) )
 	    {
 		LOG_WARN_S << "Got a command which did not contain a position or effort value." << std::endl;
 	    }
