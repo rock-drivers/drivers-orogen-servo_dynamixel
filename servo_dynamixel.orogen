@@ -5,6 +5,7 @@ name "servo_dynamixel"
 using_library "dynamixel"
 import_types_from "base"
 import_types_from "servo_dynamixelTypes.hpp"
+import_types_from "JointTransform.hpp"
 
 task_context "Task" do
     needs_configuration
@@ -20,12 +21,23 @@ task_context "Task" do
     # dynamixel specific configuration values
     property "servo_config", "std/vector</servo_dynamixel/ServoConfiguration>"
 
+    # optional configuration for the rigid_body_states 
+    # this module will generate on the 
+    property "joint_transform", "base/JointTransformVector"
+
     # command values for the servos
     # the names in the type need to match the configured values
     input_port "command", "base/commands/Joints"
 
     # status values for all the servos that have been configured 
     output_port "status_samples", "base/samples/Joints"
+
+    # if the joint_transform configuration is set, this port
+    # will output the joints in form of RigidBodyStates
+    #
+    # note: you will need a buffered connection if multiple joints
+    # are served by this module in order to not miss any transforms
+    output_port "transforms", "base/samples/RigidBodyState"
 
     periodic 0.1
 end

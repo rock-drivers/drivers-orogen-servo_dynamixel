@@ -51,6 +51,9 @@ namespace servo_dynamixel {
 	/** reads out the status for all joints */
 	void readJointStatus();
 
+	/** optional vector of RigidBodyStates if the joint config is set */
+	std::vector<base::samples::RigidBodyState> rbs;
+
     public:
         /** TaskContext constructor for Task
          * \param name Name of the task. This name needs to be unique to make it identifiable via nameservices.

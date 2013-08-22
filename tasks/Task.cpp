@@ -221,6 +221,15 @@ void Task::updateHook()
     readJointStatus();
     joint_status.time = base::Time::now();
     _status_samples.write( joint_status );
+
+    // see if we have configuration for the joint_transforms 
+    // and the output port for it is connected
+    if( !_joint_transform.value().empty() && _transforms.connected() )
+    {
+	_joint_transform.value().setRigidBodyStates( joint_status, rbs );
+	for( size_t i=0; rbs.size(); ++i )
+	    _transforms.write( rbs[i] );
+    }
 }
 
 void Task::readJointStatus()
