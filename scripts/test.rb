@@ -1,4 +1,4 @@
-#! /usr/bin/ruby
+#! /usr/bin/env ruby
 
 require 'orocos'
 include Orocos
@@ -10,7 +10,7 @@ end
 
 Orocos.initialize
 
-    Orocos::Process.run 'servo_dynamixel::Task' => 'dynamixel_task', 'output' => nil do |p|
+Orocos::Process.run 'servo_dynamixel::Task' => 'dynamixel_task', 'output' => nil do |p|
     driver = p.task 'dynamixel_task'
 
     driver.device = ARGV[0]
