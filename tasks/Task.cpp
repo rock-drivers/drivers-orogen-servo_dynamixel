@@ -227,7 +227,7 @@ void Task::updateHook()
     if( !_joint_transform.value().empty() && _transforms.connected() )
     {
 	_joint_transform.value().setRigidBodyStates( joint_status, rbs );
-	for( size_t i=0; rbs.size(); ++i )
+	for( size_t i=0; i < rbs.size(); ++i )
 	    _transforms.write( rbs[i] );
     }
 }
