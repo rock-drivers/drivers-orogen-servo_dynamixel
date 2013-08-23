@@ -4,9 +4,11 @@ require 'orocos'
 include Orocos
 
 if !ARGV[0]
-    STDERR.puts "usage: test.rb <device name>"
+    STDERR.puts "usage: test.rb <device name> <config_file>"
     exit 1
 end
+config_file = 'dynamixel.yml'
+config_file = ARGV[1] if ARGV[1]
 
 Orocos.initialize
 
@@ -16,7 +18,7 @@ Orocos::Process.run 'servo_dynamixel::Task' => 'dynamixel_task', 'output' => nil
     driver.device = ARGV[0]
     driver.baudrate = 125000
 
-    Orocos.apply_conf_file(driver, 'dynamixel.yml', ['default'])
+    Orocos.apply_conf_file(driver, config_file, ['default'])
 
     driver.configure
     driver.start
