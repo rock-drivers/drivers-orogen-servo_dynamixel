@@ -70,6 +70,25 @@ bool Task::configureHook()
 	if(!dynamixel_.readControlTable())
 	    return false;
 
+	// might be that the servo is in an error state (e.g. overload)
+	// check if this is so, and try to release it
+	int retryCount = _package_retry_count.value();
+	while( !dynamixel_.isErrorStatusOk() && retryCount >= 0 )
+	{
+	    // we can release it be setting the torque limit value
+	    dynamixel_.setControlTableEntry("Torque Enable", 0);
+	    dynamixel_.setControlTableEntry("Max Torque", 0);
+	    dynamixel_.setControlTableEntry("Torque Limit", 1023);
+
+	    // it seems the servo might take a while to release the
+	    // lock condition, sleep 100 ms
+	    usleep( 1e3 * 100 );
+	    retryCount--;
+
+	    if (!dynamixel_.setControlTableEntry("Torque Limit", 1023))
+		throw std::runtime_error("Could not reset torque limit");
+	}
+
 	// and write an info about the setup
 	uint16_t model, firmware, sid;
 	dynamixel_.getControlTableEntry("Model Number", &model);
