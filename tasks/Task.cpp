@@ -225,7 +225,7 @@ void Task::updateHook()
 		}
 		else
 		{
-		    if (!dynamixel_.setControlTableEntry("Torque Limit", effort))
+		    if (!dynamixel_.setControlTableEntry("Max Torque", effort))
 			throw std::runtime_error("could not set target effort for servo");
 		}
 	    }
