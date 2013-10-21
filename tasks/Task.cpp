@@ -35,7 +35,8 @@ bool Task::configureHook()
     Dynamixel::Configuration dynamixel_config;
     dynamixel_config.mFilename= _device.value();
     dynamixel_config.mBaudrate = _baudrate.value();
-    dynamixel_.setTimeout(10000);
+    dynamixel_.setNumberRetries( _package_retry_count.value() );
+    dynamixel_.setTimeout(1000);
 
     if(!dynamixel_.init(&dynamixel_config))
     {
