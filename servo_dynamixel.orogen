@@ -5,7 +5,7 @@ name "servo_dynamixel"
 using_library "dynamixel"
 import_types_from "base"
 import_types_from "dynamixel/dynamixel_types.hpp"
-import_types_from "JointTransform.hpp"
+import_types_from "base/JointTransform.hpp"
 
 task_context "Task" do
     needs_configuration
