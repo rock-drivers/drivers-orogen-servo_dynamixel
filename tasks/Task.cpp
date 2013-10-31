@@ -56,6 +56,7 @@ bool Task::configureHook()
 	status.enabled = false;
 	status.positionOffset = sc.positionOffset;
 	status.positionScale = sc.positionScale;
+	status.positionRange = sc.positionRange;
 	status.speedScale = sc.speedScale;
 	status.effortScale = sc.effortScale;
 	status_map[sc.name] = status;

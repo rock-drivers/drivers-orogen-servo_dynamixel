@@ -16,6 +16,7 @@ namespace servo_dynamixel {
 	bool enabled;
 	float positionScale;
 	float positionOffset;
+	float positionRange;
 	float speedScale;
 	float effortScale;
     };
