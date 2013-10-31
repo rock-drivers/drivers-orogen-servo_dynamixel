@@ -9,7 +9,7 @@ servo_config:
     punch: 32
     positionScale: 195.383 # 1023/(300/180*3.141) 
     positionOffset: 0
-    positionRange: 4096
+    positionRange: 4095
     speedScale: 139.58 # 1023/(70/60*3.141*2) 
     effortScale: 361.48 # 1023/2.83 
   - name: distal_grip
@@ -21,6 +21,6 @@ servo_config:
     punch: 32
     positionScale: 195.383  
     positionOffset: 0
-    positionRange: 4096
+    positionRange: 4095
     speedScale: 139.58 
     effortScale: 361.48
