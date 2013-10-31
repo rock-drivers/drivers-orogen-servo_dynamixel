@@ -194,7 +194,7 @@ void Task::updateHook()
 		// convert the angular position given in radians to
 		// the position range of the dynamixel
 		float pos_f = (target.position + status.positionOffset) * status.positionScale;
-		uint16_t pos = std::max( std::min( pos_f, 1023.0f ), 0.0f );
+		uint16_t pos = std::max( std::min( pos_f, status.positionRange ), 0.0f );
 
 		// and write the updated goal position
 		if(!dynamixel_.setGoalPosition( pos ))
