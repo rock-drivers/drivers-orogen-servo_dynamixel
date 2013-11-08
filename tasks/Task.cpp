@@ -150,7 +150,10 @@ void Task::updateHook()
 
     // see if we got some commands
     base::commands::Joints cmd;
-    if( _command.readNewest( cmd ) == RTT::NewData )
+    //note, needs to be a while, as we can receive commands from two different tasks
+    //containing only one command. If we control more that one servo we would loose
+    //the second command if we use readNewest
+    while( _command.read( cmd ) == RTT::NewData )
     {
 	// go through all the cmd entries
 	for( size_t cidx = 0; cidx < cmd.size(); ++cidx )
