@@ -187,6 +187,7 @@ void Task::updateHook()
 	// go through all the cmd entries
 	for( size_t cidx = 0; cidx < cmd.size(); ++cidx )
 	{
+
 	    // try to find the name of the joint in the map
 	    std::map<std::string, ServoStatus>::iterator mi = 
 		status_map.find( cmd.names[cidx] );
@@ -225,9 +226,21 @@ void Task::updateHook()
 		}
 
 		// convert the angular position given in radians to
-		// the position range of the dynamixel
-		float pos_f = (target.position + status.positionOffset) * status.positionScale;
-		uint16_t pos = std::max( std::min( pos_f, status.positionRange ), 0.0f );
+        // Adapt to limit range
+        base::JointLimitRange range;
+        if(_joint_limits.value().size() == _servo_config.value().size())
+            range = _joint_limits.value()[cidx];
+
+        float min = 0, max = status.positionRange;
+        if(range.min.hasPosition())
+            min = (range.min.position + status.positionOffset) * status.positionScale;
+        if(range.max.hasPosition())
+            max = (range.max.position + status.positionOffset) * status.positionScale;
+
+        float pos_f = (target.position + status.positionOffset) * status.positionScale;
+        uint16_t pos = std::max( std::min( pos_f, max ), min );
+
+        LOG_DEBUG("Position in ticks is: %i, Max: %f, Min: %f", pos, max, min);
 
 		// and write the updated goal position
 		if(!dynamixel_.setGoalPosition( pos ))
