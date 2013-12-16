@@ -19,6 +19,13 @@ task_context "Task" do
     # set a retry count for sending packages to the device
     property "package_retry_count", "/int", 0
 
+    # set limits of the servo. Scale and offset values from servo_config will be used to convert to ticks.
+    # If no min/max positions are given, position limits will not be set (will stay as in EEPROM)
+    # If no max speed is set, moving speed will default to maximum moving speed (1023)
+    # If no max effort is set, torque limit will default to max torque (1023)
+    # Min speed and min effort members are not used
+    property "joint_limits", "/base/JointLimits"
+
     # configuration of the servo chain 
     # adds the mapping of name to servo id, and also sets the 
     # dynamixel specific configuration values

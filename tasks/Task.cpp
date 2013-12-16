@@ -45,6 +45,7 @@ bool Task::configureHook()
     }
 
     // go through the configuration vector and set up the servos
+    uint limit_prop_count = 0;
     BOOST_FOREACH( ServoConfiguration &sc, _servo_config.value() )
     {
 	// get the id of the servo
@@ -70,6 +71,8 @@ bool Task::configureHook()
 	// read the control table
 	if(!dynamixel_.readControlTable())
 	    return false;
+
+    base::JointLimits limits = _joint_limits.get();
 
 	// might be that the servo is in an error state (e.g. overload)
 	// check if this is so, and try to release it
@@ -113,21 +116,47 @@ bool Task::configureHook()
 	if (!dynamixel_.setControlTableEntry("Punch", sc.punch))
 	    return false;
 
-	// set the limits 
-	// TODO make this configurable 
-	/** 
-	 * do not set the angle limits since they should stay 
-	 * as in the eeprom unless explicitely set
-	 *
-	if (!dynamixel_.setControlTableEntry("CW Angle Limit", 0))
-	    return false;
-	if(!dynamixel_.setControlTableEntry("CCW Angle Limit", 1023))
-	    return false;
-	*/
-	if(!dynamixel_.setControlTableEntry("Moving Speed", 1023))
-	    return false;
-	if (!dynamixel_.setControlTableEntry("Torque Limit", 1023))
-	    return false;
+    // set joint limits.
+    base::JointLimitRange range;
+    if(limits.size() == _servo_config.value().size())
+        range = limits[limit_prop_count++];
+    else
+        LOG_DEBUG("Joint Limits size does not match servo config size. Position Limits will stay as in EEPROM. Moving Speed and ");
+
+    //If no position limits are given, they will stay as they are in EEPROM
+    if(range.min.hasPosition()){
+        uint16_t cw_angle_limit = (range.min.position + status.positionOffset) * status.positionScale;
+        if (!dynamixel_.setControlTableEntry("CW Angle Limit", cw_angle_limit))
+            return false;
+
+        LOG_DEBUG("Set min position to %i (%f in radians)", cw_angle_limit, range.min.position);
+    }
+    else
+        LOG_DEBUG("Range has no min position. Will stay as in EEPROM");
+
+    if(range.max.hasPosition()){
+        uint16_t ccw_angle_limit = (range.max.position + status.positionOffset) * status.positionScale;
+        if (!dynamixel_.setControlTableEntry("CCW Angle Limit", ccw_angle_limit))
+            return false;
+
+        LOG_DEBUG("Set max position to %i (%f in radians)", ccw_angle_limit, range.max.position);
+    }
+    else
+        LOG_DEBUG("Range has no max position. Will stay as in EEPROM");
+
+    //If no speed or torque limit is given, they will be set to default values
+    uint16_t moving_speed = 1023, torque_limit = 1023;
+    if(range.max.hasSpeed())
+        moving_speed = status.speedScale * range.max.speed;
+    if(range.max.hasEffort())
+        torque_limit = status.effortScale * range.max.effort;
+
+    if(!dynamixel_.setControlTableEntry("Moving Speed", moving_speed))
+        return false;
+    LOG_DEBUG("Set moving speed to %i (%f in radians)", moving_speed, range.max.speed);
+    if (!dynamixel_.setControlTableEntry("Torque Limit", torque_limit))
+        return false;
+    LOG_DEBUG("Set torque limit to %i (%f in radians)", torque_limit, range.max.effort);
 
 	// disable the torque, so make the servo passive
 	if(!dynamixel_.setControlTableEntry("Torque Enable", 0))
