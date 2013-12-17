@@ -19,12 +19,18 @@ task_context "Task" do
     # set a retry count for sending packages to the device
     property "package_retry_count", "/int", 0
 
+    # read/write timeout of dynamixel in ms
+    property "timeout", "/int", 1000
+
     # set limits of the servo. Scale and offset values from servo_config will be used to convert to ticks.
-    # If no min/max positions are given, position limits will not be set (will stay as in EEPROM)
-    # If no max speed is set, moving speed will default to maximum moving speed (1023)
-    # If no max effort is set, torque limit will default to max torque (1023)
+    # Min Position correspconds to CW Angle Limit, Max Position to CCW Angle Limit
+    # Max Speed will be the initial moving speed of servo, max effort will be the torque limit
+    # If a value is not set, default will be used (0...1023 as joint limits in ticks, max moving speed (1023), max torque (1023))
     # Min speed and min effort members are not used
     property "joint_limits", "/base/JointLimits"
+
+    # If true, input command will be capped to respect the joint limits. If false, exception will be thrown if a joint limit is violated.
+    property "cap_at_limits", "/int", 0
 
     # configuration of the servo chain 
     # adds the mapping of name to servo id, and also sets the 
@@ -48,6 +54,8 @@ task_context "Task" do
     # note: you will need a buffered connection if multiple joints
     # are served by this module in order to not miss any transforms
     output_port "transforms", "base/samples/RigidBodyState"
+
+    output_port "act_sample_time", "double"
 
     periodic 0.1
 end

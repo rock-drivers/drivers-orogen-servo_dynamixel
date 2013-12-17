@@ -49,6 +49,9 @@ namespace servo_dynamixel {
 	/** holds the status of the joints */
 	base::samples::Joints joint_status;
 
+    /** holds the joint limits */
+    base::JointLimits limits_;
+
 	/** reads out the status for all joints */
 	void readJointStatus();
 

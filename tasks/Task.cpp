@@ -36,11 +36,11 @@ bool Task::configureHook()
     dynamixel_config.mFilename= _device.value();
     dynamixel_config.mBaudrate = _baudrate.value();
     dynamixel_.setNumberRetries( _package_retry_count.value() );
-    dynamixel_.setTimeout(1000);
+    dynamixel_.setTimeout(_timeout.value());
 
     if(!dynamixel_.init(&dynamixel_config))
     {
-	LOG_ERROR( "Cannot open device '%s'.  %s", _device.value().c_str(), strerror(errno) );
+        LOG_ERROR( "Cannot open device '%s'.  %s", _device.value().c_str(), strerror(errno) );
         return false;
     }
 
@@ -48,108 +48,120 @@ bool Task::configureHook()
     uint limit_prop_count = 0;
     BOOST_FOREACH( ServoConfiguration &sc, _servo_config.value() )
     {
-	// get the id of the servo
-	int id = sc.id; 
+        // get the id of the servo
+        int id = sc.id;
 
-	// copy relevant config information to the status 
-	ServoStatus status;
-	status.id = id;
-	status.enabled = false;
-	status.positionOffset = sc.positionOffset;
-	status.positionScale = sc.positionScale;
-	status.positionRange = sc.positionRange;
-	status.speedScale = sc.speedScale;
-	status.effortScale = sc.effortScale;
-	status_map[sc.name] = status;
-	
-	// add it to the driver
-	dynamixel_.addServo(id);
+        // copy relevant config information to the status
+        ServoStatus status;
+        status.id = id;
+        status.enabled = false;
+        status.positionOffset = sc.positionOffset;
+        status.positionScale = sc.positionScale;
+        status.positionRange = sc.positionRange;
+        status.speedScale = sc.speedScale;
+        status.effortScale = sc.effortScale;
+        status_map[sc.name] = status;
 
-	// and make it active
-	dynamixel_.setServoActive(id);
+        // add it to the driver
+        dynamixel_.addServo(id);
 
-	// read the control table
-	if(!dynamixel_.readControlTable())
-	    return false;
+        // and make it active
+        dynamixel_.setServoActive(id);
 
-    base::JointLimits limits = _joint_limits.get();
+        // read the control table
+        if(!dynamixel_.readControlTable())
+            return false;
 
-	// might be that the servo is in an error state (e.g. overload)
-	// check if this is so, and try to release it
-	int retryCount = _package_retry_count.value();
-	while( !dynamixel_.isErrorStatusOk() && retryCount >= 0 )
-	{
-	    // we can release it be setting the torque limit value
-	    dynamixel_.setControlTableEntry("Torque Enable", 0);
-	    dynamixel_.setControlTableEntry("Max Torque", 0);
-	    dynamixel_.setControlTableEntry("Torque Limit", 1023);
+        base::JointLimits limits = _joint_limits.get();
 
-	    // it seems the servo might take a while to release the
-	    // lock condition, sleep 100 ms
-	    usleep( 1e3 * 100 );
-	    retryCount--;
+        // might be that the servo is in an error state (e.g. overload)
+        // check if this is so, and try to release it
+        int retryCount = _package_retry_count.value();
+        while( !dynamixel_.isErrorStatusOk() && retryCount >= 0 )
+        {
+            // we can release it be setting the torque limit value
+            dynamixel_.setControlTableEntry("Torque Enable", 0);
+            dynamixel_.setControlTableEntry("Max Torque", 0);
+            dynamixel_.setControlTableEntry("Torque Limit", 1023);
 
-	    if (!dynamixel_.setControlTableEntry("Torque Limit", 1023))
-		throw std::runtime_error("Could not reset torque limit");
-	}
+            // it seems the servo might take a while to release the
+            // lock condition, sleep 100 ms
+            usleep( 1e3 * 100 );
+            retryCount--;
 
-	// and write an info about the setup
-	uint16_t model, firmware, sid;
-	dynamixel_.getControlTableEntry("Model Number", &model);
-	dynamixel_.getControlTableEntry("Version of Firmware", &firmware);
-	dynamixel_.getControlTableEntry("ID", &sid);
-	LOG_INFO_S 
-	   << "Found servo model " << model
-	   << " firmware " << firmware
-	   << " at id " << sid 
-	   << std::endl;
+            if (!dynamixel_.setControlTableEntry("Torque Limit", 1023))
+                throw std::runtime_error("Could not reset torque limit");
+        }
 
-	// set control value A,B,C,D,E (see RX-28 manual)
-	if (!dynamixel_.setControlTableEntry("CW Compliance Slope", sc.cwComplianceSlope ))
-	    return false;
-	if (!dynamixel_.setControlTableEntry("CW Compliance Margin", sc.cwComplianceMargin))
-	    return false;
-	if (!dynamixel_.setControlTableEntry("CCW Compliance Margin", sc.ccwComplianceMargin))
-	    return false;
-	if (!dynamixel_.setControlTableEntry("CCW Compliance Slope", sc.ccwComplianceSlope))
-	    return false;
-	if (!dynamixel_.setControlTableEntry("Punch", sc.punch))
-	    return false;
+        // and write an info about the setup
+        uint16_t model, firmware, sid;
+        dynamixel_.getControlTableEntry("Model Number", &model);
+        dynamixel_.getControlTableEntry("Version of Firmware", &firmware);
+        dynamixel_.getControlTableEntry("ID", &sid);
+        LOG_INFO_S
+                << "Found servo model " << model
+                << " firmware " << firmware
+                << " at id " << sid
+                << std::endl;
 
-    // set joint limits.
-    base::JointLimitRange range;
-    if(limits.size() == _servo_config.value().size())
-        range = limits[limit_prop_count++];
-    else
-        LOG_DEBUG("Joint Limits size does not match servo config size. Will use default values as limits.");
+        // set control value A,B,C,D,E (see RX-28 manual)
+        if (!dynamixel_.setControlTableEntry("CW Compliance Slope", sc.cwComplianceSlope ))
+            return false;
+        if (!dynamixel_.setControlTableEntry("CW Compliance Margin", sc.cwComplianceMargin))
+            return false;
+        if (!dynamixel_.setControlTableEntry("CCW Compliance Margin", sc.ccwComplianceMargin))
+            return false;
+        if (!dynamixel_.setControlTableEntry("CCW Compliance Slope", sc.ccwComplianceSlope))
+            return false;
+        if (!dynamixel_.setControlTableEntry("Punch", sc.punch))
+            return false;
 
-    //If no position limits are given, they will stay as they are in EEPROM
-    if(range.min.hasPosition()){
-        uint16_t cw_angle_limit = (range.min.position + status.positionOffset) * status.positionScale;
+        // set joint limits
+        base::JointLimitRange range;
+        if(limits.size() == _servo_config.value().size())
+            range = limits[limit_prop_count++];
+
+        //If a limit is not given it will be set to default (Position to (0,1023), max speed to 1023, torque limit to 1023)
+        uint16_t cw_angle_limit , ccw_angle_limit, moving_speed, torque_limit;
+        if(range.min.hasPosition())
+            cw_angle_limit = (range.min.position + status.positionOffset) * status.positionScale;
+        else{
+            cw_angle_limit = 0;
+            range.min.position = cw_angle_limit / status.positionScale - status.positionOffset;
+        }
+        if(range.max.hasPosition())
+            ccw_angle_limit = (range.max.position + status.positionOffset) * status.positionScale;
+        else{
+            ccw_angle_limit = 1023;
+            range.max.position = ccw_angle_limit / status.positionScale - status.positionOffset;
+        }
+        if(range.max.hasSpeed())
+            moving_speed = status.speedScale * range.max.speed;
+        else{
+            moving_speed = 1023;
+            range.max.speed = moving_speed / status.speedScale;
+        }
+        if(range.max.hasEffort())
+            torque_limit = status.effortScale * range.max.effort;
+        else{
+            torque_limit = 1023;
+            range.max.effort = torque_limit / status.effortScale;
+        }
+
         if (!dynamixel_.setControlTableEntry("CW Angle Limit", cw_angle_limit))
             return false;
-    }
-    if(range.max.hasPosition()){
-        uint16_t ccw_angle_limit = (range.max.position + status.positionOffset) * status.positionScale;
         if (!dynamixel_.setControlTableEntry("CCW Angle Limit", ccw_angle_limit))
             return false;
-    }
+        if(!dynamixel_.setControlTableEntry("Moving Speed", moving_speed))
+            return false;
+        if (!dynamixel_.setControlTableEntry("Torque Limit", torque_limit))
+            return false;
 
-    //If no speed or torque limit is given, they will be set to default values
-    uint16_t moving_speed = 1023, torque_limit = 1023;
-    if(range.max.hasSpeed())
-        moving_speed = status.speedScale * range.max.speed;
-    if(range.max.hasEffort())
-        torque_limit = status.effortScale * range.max.effort;
+        limits_.elements.push_back(range);
 
-    if(!dynamixel_.setControlTableEntry("Moving Speed", moving_speed))
-        return false;
-    if (!dynamixel_.setControlTableEntry("Torque Limit", torque_limit))
-        return false;
-
-	// disable the torque, so make the servo passive
-	if(!dynamixel_.setControlTableEntry("Torque Enable", 0))
-	    return false;
+        // disable the torque, so make the servo passive
+        if(!dynamixel_.setControlTableEntry("Torque Enable", 0))
+            return false;
 
     }
 
@@ -173,117 +185,126 @@ void Task::updateHook()
     //the second command if we use readNewest
     while( _command.read( cmd ) == RTT::NewData )
     {
-	// go through all the cmd entries
-	for( size_t cidx = 0; cidx < cmd.size(); ++cidx )
-	{
+        // go through all the cmd entries
+        for( size_t cidx = 0; cidx < cmd.size(); ++cidx )
+        {
 
-	    // try to find the name of the joint in the map
-	    std::map<std::string, ServoStatus>::iterator mi = 
-		status_map.find( cmd.names[cidx] );
+            // try to find the name of the joint in the map
+            std::map<std::string, ServoStatus>::iterator mi =
+                    status_map.find( cmd.names[cidx] );
 
-	    if( mi == status_map.end() )
-	    {
-		LOG_ERROR_S 
-		    << "There is no servo with the name '"
-		    << cmd.names[cidx] << "' in the configuration."
-		    << std::endl;
+            if( mi == status_map.end() )
+            {
+                LOG_ERROR_S
+                        << "There is no servo with the name '"
+                        << cmd.names[cidx] << "' in the configuration."
+                        << std::endl;
 
-		throw std::runtime_error("Command/configuration mismatch");
-	    }
+                throw std::runtime_error("Command/configuration mismatch");
+            }
 
-	    // get the servo configuration
-	    ServoStatus &status( mi->second );
+            // get the servo configuration
+            ServoStatus &status( mi->second );
 
-	    // get the servo id from the map
-	    int id = status.id;
+            // get the servo id from the map
+            int id = status.id;
 
-	    // and make it active
-	    dynamixel_.setServoActive(id);
+            // and make it active
+            dynamixel_.setServoActive(id);
 
-	    // get target joint state
-	    const base::JointState &target( cmd[cidx] );
+            // get target joint state
+            const base::JointState &target( cmd[cidx] );
 
-	    if( target.hasPosition() )
-	    {
-		// enable servo if necessary
-		if( status.enabled == false )
-		{
-		    // enable the servo 
-		    dynamixel_.setControlTableEntry("Torque Enable", 1);
+            //Check joint limits. This will throw an OutOfBounds Error if limits are violated
+            base::JointLimitRange range = limits_[cidx];
+            if(!_cap_at_limits.get()){
+                if(!range.isValid(target)){ //TODO: Replace isValid() by validate(). Seems not to be working.
+                    LOG_ERROR("Limits out of bounds");
+                    throw std::runtime_error("Limits out of bounds");
+                }
+            }
 
-		    status.enabled = true;
-		}
+            if( target.hasPosition() )
+            {
+                // enable servo if necessary
+                if( status.enabled == false )
+                {
+                    // enable the servo
+                    dynamixel_.setControlTableEntry("Torque Enable", 1);
+                    status.enabled = true;
+                }
 
-		// convert the angular position given in radians to
-        // Adapt to limit range
-        base::JointLimitRange range;
-        if(_joint_limits.value().size() == _servo_config.value().size())
-            range = _joint_limits.value()[cidx];
+                float pos_f = target.position;
+                if(_cap_at_limits.get())
+                    pos_f = std::max( std::min( pos_f, (float)range.max.position ), (float)range.min.position );
 
-        float min = 0, max = status.positionRange;
-        if(range.min.hasPosition())
-            min = (range.min.position + status.positionOffset) * status.positionScale;
-        if(range.max.hasPosition())
-            max = (range.max.position + status.positionOffset) * status.positionScale;
+                // convert the angular position given in radians
+                uint16_t pos = (pos_f + status.positionOffset) * status.positionScale;
 
-        float pos_f = (target.position + status.positionOffset) * status.positionScale;
-        uint16_t pos = std::max( std::min( pos_f, max ), min );
+                // and write the updated goal position
+                if(!dynamixel_.setGoalPosition( pos ))
+                {
+                    LOG_WARN_S << "Set position " << pos
+                               << "  for servo id " << id << " failed." << std::endl;
+                    throw std::runtime_error("could not set target position for servo");
+                }
+            }
 
-        LOG_DEBUG("Position in ticks is: %i, Max: %f, Min: %f", pos, max, min);
+            if( target.hasSpeed() )
+            {
+                float speed_f = target.speed;
+                if(_cap_at_limits.get())
+                    speed_f = std::max( std::min( speed_f, (float)range.max.speed ), 0.0f);
 
-		// and write the updated goal position
-		if(!dynamixel_.setGoalPosition( pos ))
-		{
-		    LOG_WARN_S << "Set position " << pos 
-			<< "  for servo id " << id << " failed." << std::endl;
-		    throw std::runtime_error("could not set target position for servo");
-		}
-	    }
+                uint16_t speed = speed_f * status.speedScale;
 
-	    if( target.hasSpeed() )
-	    {
-		float speed_f = target.speed * status.speedScale;
-		uint16_t speed = std::max( std::min( speed_f, 1023.0f ), 0.0f );
-		if (!dynamixel_.setControlTableEntry("Moving Speed", speed))
-		    throw std::runtime_error("could not set speed value for servo");
-	    }
+                if (!dynamixel_.setControlTableEntry("Moving Speed", speed))
+                    throw std::runtime_error("could not set speed value for servo");
+            }
 
-	    if( target.hasEffort() )
-	    {
-		float effort_f = target.effort * status.effortScale;
-		uint16_t effort = std::max( std::min( effort_f, 1023.0f ), 0.0f );
-		if( effort == 0 )
-		{
-		    // disable the servo 
-		    dynamixel_.setControlTableEntry("Torque Enable", 0);
-		    status.enabled = false;
-		}
-		else
-		{
-		    if (!dynamixel_.setControlTableEntry("Max Torque", effort))
-			throw std::runtime_error("could not set target effort for servo");
-		}
-	    }
+            if( target.hasEffort() )
+            {
+                float effort_f = target.effort;
+                if(_cap_at_limits.value())
+                    effort_f = std::max( std::min( effort_f, (float)range.max.effort), 0.0f);
 
-	    if( !(target.hasPosition() || target.hasEffort() || target.hasSpeed()) )
-	    {
-		LOG_WARN_S << "Got a command which did not contain a position or effort value." << std::endl;
-	    }
-	}
+                uint16_t effort = target.effort * status.effortScale;
+
+                if( effort == 0 )
+                {
+                    // disable the servo
+                    dynamixel_.setControlTableEntry("Torque Enable", 0);
+                    status.enabled = false;
+                }
+                else
+                {
+                    if (!dynamixel_.setControlTableEntry("Max Torque", effort))
+                        throw std::runtime_error("could not set target effort for servo");
+                }
+            }
+
+            if( !(target.hasPosition() || target.hasEffort() || target.hasSpeed()) )
+            {
+                LOG_WARN_S << "Got a command which did not contain a position or effort value." << std::endl;
+            }
+        }
     }
 
-    // get joint status and write to output port 
+    // get joint status and write to output port
     readJointStatus();
+    _act_sample_time.write((base::Time::now() - joint_status.time).toMilliseconds());
     joint_status.time = base::Time::now();
+
+
     _status_samples.write( joint_status );
 
-    // see if we have configuration for the joint_transforms 
+    // see if we have configuration for the joint_transforms
     // and the output port for it is connected
     if( !_joint_transform.value().empty() && _transforms.connected() )
     {
-	_joint_transform.value().setRigidBodyStates( joint_status, rbs );
-	for( size_t i=0; i < rbs.size(); ++i )
-	    _transforms.write( rbs[i] );
+        _joint_transform.value().setRigidBodyStates( joint_status, rbs );
+        for( size_t i=0; i < rbs.size(); ++i )
+            _transforms.write( rbs[i] );
     }
 }
 
@@ -292,53 +313,61 @@ void Task::readJointStatus()
     // setup the result type
     if( joint_status.size() != status_map.size() );
     {
-	joint_status.resize( status_map.size() );
+        joint_status.resize( status_map.size() );
 
-	// fill in the joint names
-	size_t i = 0;
-	for( std::map<std::string, ServoStatus>::iterator mi = 
-		status_map.begin(); mi != status_map.end(); ++mi )
-	{
-	    joint_status.names[i] = mi->first;
-	    ++i;
-	}
+        // fill in the joint names
+        size_t i = 0;
+        for( std::map<std::string, ServoStatus>::iterator mi =
+             status_map.begin(); mi != status_map.end(); ++mi )
+        {
+            joint_status.names[i] = mi->first;
+            ++i;
+        }
     }
 
     // now read out the status of all the servos
     // and write into the joint_status array
     // we use the same order as the status_map
     size_t i = 0;
-    for( std::map<std::string, ServoStatus>::iterator mi = 
-	    status_map.begin(); mi != status_map.end(); ++mi )
+    for( std::map<std::string, ServoStatus>::iterator mi =
+         status_map.begin(); mi != status_map.end(); ++mi )
     {
-	ServoStatus &sc( mi->second );
+        ServoStatus &sc( mi->second );
 
-	// get the id of the servo
-	int id = sc.id; 
+        // get the id of the servo
+        int id = sc.id;
 
-	// and make it active
-	dynamixel_.setServoActive(id);
+        // and make it active
 
-	// read the position values and write the scaled version to the joints status
-	uint16_t position;
-	if( !dynamixel_.getPresentPosition( &position ) )
-	    throw std::runtime_error("Could not read servo position value");
-	joint_status[i].position = position / sc.positionScale - sc.positionOffset;
+        base::Time start = base::Time::now();
+        dynamixel_.setServoActive(id);
 
-	// same for speed
-	uint16_t speed;
-	if( !dynamixel_.getControlTableEntry( "Present Speed", &speed ) )
-	    throw std::runtime_error("Could not read servo speed value");
-	joint_status[i].speed = (speed > 1023 ? 1023 - speed : speed ) / sc.speedScale; 
+        // read the position values and write the scaled version to the joints status
+        start = base::Time::now();
+        uint16_t position;
+        if( !dynamixel_.getPresentPosition( &position ) )
+            throw std::runtime_error("Could not read servo position value");
+        joint_status[i].position = position / sc.positionScale - sc.positionOffset;
 
-	// and the load value
-	uint16_t effort;
-	if( !dynamixel_.getControlTableEntry( "Present Load", &effort ) )
-	    throw std::runtime_error("Could not read servo load value");
-	joint_status[i].effort = (effort > 1023 ? 1023 - effort : effort ) / sc.effortScale;
+        // same for speed
+        uint16_t speed;
+        start = base::Time::now();
+        if( !dynamixel_.getControlTableEntry( "Present Speed", &speed ) )
+            throw std::runtime_error("Could not read servo speed value");
+        //std::cout<<"Get present speed: "<<(base::Time::now() - start).toMilliseconds()<<std::endl;
+        joint_status[i].speed = (speed > 1023 ? 1023 - speed : speed ) / sc.speedScale;
 
-	++i;
+        // and the load value
+        uint16_t effort;
+        start = base::Time::now();
+        if( !dynamixel_.getControlTableEntry( "Present Load", &effort ) )
+            throw std::runtime_error("Could not read servo load value");
+        //std::cout<<"Get present effort: "<<(base::Time::now() - start).toMilliseconds()<<std::endl;
+        joint_status[i].effort = (effort > 1023 ? 1023 - effort : effort ) / sc.effortScale;
+
+        ++i;
     }
+    //std::cout<<std::endl;
 }
 
 void Task::errorHook()
@@ -349,22 +378,22 @@ void Task::stopHook()
 {
     TaskBase::stopHook();
 
-    for( std::map<std::string, ServoStatus>::iterator mi = 
-	    status_map.begin(); mi != status_map.end(); ++mi )
+    for( std::map<std::string, ServoStatus>::iterator mi =
+         status_map.begin(); mi != status_map.end(); ++mi )
     {
-	ServoStatus &sc( mi->second );
+        ServoStatus &sc( mi->second );
 
-	// get the id of the servo
-	int id = sc.id; 
+        // get the id of the servo
+        int id = sc.id;
 
-	// and make it active
-	dynamixel_.setServoActive(id);
+        // and make it active
+        dynamixel_.setServoActive(id);
 
-	// disable all the servos 
-	dynamixel_.setControlTableEntry("Torque Enable", 0);
+        // disable all the servos
+        dynamixel_.setControlTableEntry("Torque Enable", 0);
 
-	// set disabled flag
-	sc.enabled = false;
+        // set disabled flag
+        sc.enabled = false;
     }
 }
 void Task::cleanupHook()
