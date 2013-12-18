@@ -176,6 +176,9 @@ bool Task::startHook()
 }
 void Task::updateHook()
 {
+    _act_cycle_time.write((base::Time::now() - stamp_).toSeconds());
+    stamp_ = base::Time::now();
+
     TaskBase::updateHook();
 
     // see if we got some commands
@@ -292,7 +295,6 @@ void Task::updateHook()
 
     // get joint status and write to output port
     readJointStatus();
-    _act_sample_time.write((base::Time::now() - joint_status.time).toMilliseconds());
     joint_status.time = base::Time::now();
 
 
@@ -354,7 +356,6 @@ void Task::readJointStatus()
         start = base::Time::now();
         if( !dynamixel_.getControlTableEntry( "Present Speed", &speed ) )
             throw std::runtime_error("Could not read servo speed value");
-        //std::cout<<"Get present speed: "<<(base::Time::now() - start).toMilliseconds()<<std::endl;
         joint_status[i].speed = (speed > 1023 ? 1023 - speed : speed ) / sc.speedScale;
 
         // and the load value
@@ -362,12 +363,10 @@ void Task::readJointStatus()
         start = base::Time::now();
         if( !dynamixel_.getControlTableEntry( "Present Load", &effort ) )
             throw std::runtime_error("Could not read servo load value");
-        //std::cout<<"Get present effort: "<<(base::Time::now() - start).toMilliseconds()<<std::endl;
         joint_status[i].effort = (effort > 1023 ? 1023 - effort : effort ) / sc.effortScale;
 
         ++i;
     }
-    //std::cout<<std::endl;
 }
 
 void Task::errorHook()

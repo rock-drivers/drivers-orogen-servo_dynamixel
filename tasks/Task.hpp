@@ -58,6 +58,8 @@ namespace servo_dynamixel {
 	/** optional vector of RigidBodyStates if the joint config is set */
 	std::vector<base::samples::RigidBodyState> rbs;
 
+        base::Time stamp_;
+
     public:
         /** TaskContext constructor for Task
          * \param name Name of the task. This name needs to be unique to make it identifiable via nameservices.

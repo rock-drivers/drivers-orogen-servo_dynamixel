@@ -23,7 +23,7 @@ task_context "Task" do
     property "timeout", "/int", 1000
 
     # set limits of the servo. Scale and offset values from servo_config will be used to convert to ticks.
-    # Min Position correspconds to CW Angle Limit, Max Position to CCW Angle Limit
+    # Min Position corresponds to CW Angle Limit, Max Position to CCW Angle Limit
     # Max Speed will be the initial moving speed of servo, max effort will be the torque limit
     # If a value is not set, default will be used (0...1023 as joint limits in ticks, max moving speed (1023), max torque (1023))
     # Min speed and min effort members are not used
@@ -55,7 +55,8 @@ task_context "Task" do
     # are served by this module in order to not miss any transforms
     output_port "transforms", "base/samples/RigidBodyState"
 
-    output_port "act_sample_time", "double"
+    # Debug Port to check the cycle time
+    output_port "act_cycle_time", "double"
 
     periodic 0.1
 end
