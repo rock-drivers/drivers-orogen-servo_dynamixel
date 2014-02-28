@@ -37,6 +37,9 @@ task_context "Task" do
     # dynamixel specific configuration values
     property "servo_config", "std/vector</servo_dynamixel/ServoConfiguration>"
 
+    # Always keep torque enabled (even after stopping the component)
+    property "keep_torque_enabled", "int", 0
+
     # optional configuration for the rigid_body_states 
     # this module will generate on the 
     property "joint_transform", "base/JointTransformVector"

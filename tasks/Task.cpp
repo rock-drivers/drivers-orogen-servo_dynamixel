@@ -44,6 +44,8 @@ bool Task::configureHook()
         return false;
     }
 
+    servo_limits_.clear();
+
     // go through the configuration vector and set up the servos
     uint limit_prop_count = 0;
     BOOST_FOREACH( ServoConfiguration &sc, _servo_config.value() )
@@ -54,7 +56,7 @@ bool Task::configureHook()
         // copy relevant config information to the status
         ServoStatus status;
         status.id = id;
-        status.enabled = false;
+        status.enabled = (bool)_keep_torque_enabled.value();
         status.positionOffset = sc.positionOffset;
         status.positionScale = sc.positionScale;
         status.positionRange = sc.positionRange;
@@ -71,8 +73,6 @@ bool Task::configureHook()
         // read the control table
         if(!dynamixel_.readControlTable())
             return false;
-
-        base::JointLimits limits = _joint_limits.get();
 
         // might be that the servo is in an error state (e.g. overload)
         // check if this is so, and try to release it
@@ -116,53 +116,54 @@ bool Task::configureHook()
         if (!dynamixel_.setControlTableEntry("Punch", sc.punch))
             return false;
 
+        base::JointLimits limits = _joint_limits.get();
+        ServoLimits servo_limits;
+
         // set joint limits
         base::JointLimitRange range;
         if(limits.size() == _servo_config.value().size())
             range = limits[limit_prop_count++];
 
         //If a limit is not given it will be set to default (Position to (0,1023), max speed to 1023, torque limit to 1023)
-        uint16_t cw_angle_limit , ccw_angle_limit, moving_speed, torque_limit;
         if(range.min.hasPosition())
-            cw_angle_limit = (range.min.position + status.positionOffset) * status.positionScale;
-        else{
-            cw_angle_limit = 0;
-            range.min.position = cw_angle_limit / status.positionScale - status.positionOffset;
-        }
+            servo_limits.min_pos = (range.min.position + status.positionOffset) * status.positionScale;
+        else
+            servo_limits.min_pos = 0;
+
         if(range.max.hasPosition())
-            ccw_angle_limit = (range.max.position + status.positionOffset) * status.positionScale;
-        else{
-            ccw_angle_limit = 1023;
-            range.max.position = ccw_angle_limit / status.positionScale - status.positionOffset;
-        }
+            servo_limits.max_pos = (range.max.position + status.positionOffset) * status.positionScale;
+        else
+            servo_limits.max_pos = 1023;
+
         if(range.max.hasSpeed())
-            moving_speed = status.speedScale * range.max.speed;
-        else{
-            moving_speed = 1023;
-            range.max.speed = moving_speed / status.speedScale;
-        }
+            servo_limits.max_speed = status.speedScale * range.max.speed;
+        else
+            servo_limits.max_speed = 1023;
+
         if(range.max.hasEffort())
-            torque_limit = status.effortScale * range.max.effort;
-        else{
-            torque_limit = 1023;
-            range.max.effort = torque_limit / status.effortScale;
-        }
+            servo_limits.max_effort = status.effortScale * range.max.effort;
+        else
+            servo_limits.max_effort = 1023;
 
-        if (!dynamixel_.setControlTableEntry("CW Angle Limit", cw_angle_limit))
-            return false;
-        if (!dynamixel_.setControlTableEntry("CCW Angle Limit", ccw_angle_limit))
-            return false;
-        if(!dynamixel_.setControlTableEntry("Moving Speed", moving_speed))
-            return false;
-        if (!dynamixel_.setControlTableEntry("Torque Limit", torque_limit))
-            return false;
+        LOG_DEBUG("Setting CW Angle limit to %i", servo_limits.min_pos);
+        LOG_DEBUG("Setting CCW Angle limit to %i", servo_limits.max_pos);;
+        LOG_DEBUG("Setting Moving speed to %i", servo_limits.max_speed);
+        LOG_DEBUG("Setting Torque limit to %i", servo_limits.max_effort);
 
-        limits_.elements.push_back(range);
+        if (!dynamixel_.setControlTableEntry("CW Angle Limit", servo_limits.min_pos))
+            return false;
+        if (!dynamixel_.setControlTableEntry("CCW Angle Limit", servo_limits.max_pos))
+            return false;
+        if(!dynamixel_.setControlTableEntry("Moving Speed", servo_limits.max_speed))
+            return false;
+        if (!dynamixel_.setControlTableEntry("Torque Limit", servo_limits.max_effort))
+            return false;
 
         // disable the torque, so make the servo passive
-        if(!dynamixel_.setControlTableEntry("Torque Enable", 0))
+        if(!dynamixel_.setControlTableEntry("Torque Enable", _keep_torque_enabled.value()))
             return false;
 
+        servo_limits_.push_back(servo_limits);
     }
 
     return true;
@@ -218,15 +219,6 @@ void Task::updateHook()
             // get target joint state
             const base::JointState &target( cmd[cidx] );
 
-            //Check joint limits. This will throw an OutOfBounds Error if limits are violated
-            base::JointLimitRange range = limits_[cidx];
-            if(!_cap_at_limits.get()){
-                if(!range.isValid(target)){ //TODO: Replace isValid() by validate(). Seems not to be working.
-                    LOG_ERROR("Limits out of bounds");
-                    throw std::runtime_error("Limits out of bounds");
-                }
-            }
-
             if( target.hasPosition() )
             {
                 // enable servo if necessary
@@ -237,12 +229,20 @@ void Task::updateHook()
                     status.enabled = true;
                 }
 
-                float pos_f = target.position;
-                if(_cap_at_limits.get())
-                    pos_f = std::max( std::min( pos_f, (float)range.max.position ), (float)range.min.position );
+                uint16_t pos = (target.position + status.positionOffset) * status.positionScale;
 
-                // convert the angular position given in radians
-                uint16_t pos = (pos_f + status.positionOffset) * status.positionScale;
+                //Check joint limits
+                if(_cap_at_limits.value())
+                    pos = std::max( std::min( pos, servo_limits_[cidx].max_pos ), servo_limits_[cidx].min_pos);
+                else
+                {
+                    if(pos < servo_limits_[cidx].min_pos||
+                       pos > servo_limits_[cidx].max_pos)
+                    {
+                        LOG_ERROR("Target position of servo %i is out of bounds: Min Pos: %i, Max Pos: %i, Target Pos: %i", id, servo_limits_[cidx].min_pos, servo_limits_[cidx].max_pos, pos);
+                        throw std::invalid_argument("Target position out of bounds");
+                    }
+                }
 
                 // and write the updated goal position
                 if(!dynamixel_.setGoalPosition( pos ))
@@ -255,11 +255,18 @@ void Task::updateHook()
 
             if( target.hasSpeed() )
             {
-                float speed_f = target.speed;
+                uint16_t speed = target.speed * status.speedScale;
                 if(_cap_at_limits.get())
-                    speed_f = std::max( std::min( speed_f, (float)range.max.speed ), 0.0f);
-
-                uint16_t speed = speed_f * status.speedScale;
+                    speed = std::max( std::min( speed, servo_limits_[cidx].max_speed ), (uint16_t)0);
+                else
+                {
+                    if(speed < 0 ||
+                       speed > servo_limits_[cidx].max_speed)
+                    {
+                        LOG_ERROR("Target speed of servo %i is out of bounds: Min Speed: %i, Max Speed: %i, Target Speed: %i", id, 0, servo_limits_[cidx].max_speed, speed);
+                        throw std::invalid_argument("Target Speed out of bounds");
+                    }
+                }
 
                 if (!dynamixel_.setControlTableEntry("Moving Speed", speed))
                     throw std::runtime_error("could not set speed value for servo");
@@ -267,11 +274,19 @@ void Task::updateHook()
 
             if( target.hasEffort() )
             {
-                float effort_f = target.effort;
-                if(_cap_at_limits.value())
-                    effort_f = std::max( std::min( effort_f, (float)range.max.effort), 0.0f);
-
                 uint16_t effort = target.effort * status.effortScale;
+
+                if(_cap_at_limits.get())
+                    effort = std::max( std::min( effort, servo_limits_[cidx].max_effort ), (uint16_t)0);
+                else
+                {
+                    if(effort < 0 ||
+                       effort > servo_limits_[cidx].max_effort)
+                    {
+                        LOG_ERROR("Target effort of servo %i is out of bounds: Min effort: %i, Max effort: %i, Target effort: %i", id, 0, servo_limits_[cidx].max_effort, effort);
+                        throw std::invalid_argument("Target effort out of bounds");
+                    }
+                }
 
                 if( effort == 0 )
                 {
@@ -389,10 +404,10 @@ void Task::stopHook()
         dynamixel_.setServoActive(id);
 
         // disable all the servos
-        dynamixel_.setControlTableEntry("Torque Enable", 0);
+        dynamixel_.setControlTableEntry("Torque Enable", _keep_torque_enabled.value());
 
         // set disabled flag
-        sc.enabled = false;
+        sc.enabled = (bool)_keep_torque_enabled.value();
     }
 }
 void Task::cleanupHook()

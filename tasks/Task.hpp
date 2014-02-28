@@ -21,6 +21,15 @@ namespace servo_dynamixel {
 	float effortScale;
     };
 
+    struct ServoLimits{
+        uint16_t min_pos;
+        uint16_t max_pos;
+        uint16_t max_speed;
+        uint16_t max_effort;
+    };
+
+
+
     /*! \class Task 
      * \brief The task context provides and requires services. It uses an ExecutionEngine to perform its functions.
      * Essential interfaces are operations, data flow ports and properties. These interfaces have been defined using the oroGen specification.
@@ -49,8 +58,8 @@ namespace servo_dynamixel {
 	/** holds the status of the joints */
 	base::samples::Joints joint_status;
 
-    /** holds the joint limits */
-    base::JointLimits limits_;
+    /** holds the joint limits in ticks */
+    std::vector<ServoLimits> servo_limits_;
 
 	/** reads out the status for all joints */
 	void readJointStatus();
