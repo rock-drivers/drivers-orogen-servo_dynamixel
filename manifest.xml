@@ -6,4 +6,5 @@
   <license>LGPL</license>
   <depend package="base/types" />
   <depend package="drivers/dynamixel" />
+  <tags>stable</tags>
 </package>
