@@ -9,6 +9,13 @@
 
 namespace servo_dynamixel {
 
+    struct ServoLimits{
+            uint16_t min_pos;
+            uint16_t max_pos;
+            uint16_t max_speed;
+            uint16_t max_effort;
+        };
+
     /** store the status of the servo */
     struct ServoStatus
     {
@@ -19,14 +26,9 @@ namespace servo_dynamixel {
 	float positionRange;
 	float speedScale;
 	float effortScale;
+        ServoLimits limits;
     };
 
-    struct ServoLimits{
-        uint16_t min_pos;
-        uint16_t max_pos;
-        uint16_t max_speed;
-        uint16_t max_effort;
-    };
 
 
 
@@ -58,8 +60,6 @@ namespace servo_dynamixel {
 	/** holds the status of the joints */
 	base::samples::Joints joint_status;
 
-    /** holds the joint limits in ticks */
-    std::vector<ServoLimits> servo_limits_;
 
 	/** reads out the status for all joints */
 	void readJointStatus();
