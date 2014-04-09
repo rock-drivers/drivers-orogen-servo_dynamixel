@@ -230,7 +230,7 @@ void Task::updateHook()
 
                 ServoStatusWithCommand statusWCmd(mi->second);
                 statusWCmd.cmd = cmd[cidx];
-                cmdMap.insert(std::make_pair(jointName, ServoStatusWithCommand(mi->second)));
+                cmdMap.insert(std::make_pair(jointName, statusWCmd));
             }
             else
             {
