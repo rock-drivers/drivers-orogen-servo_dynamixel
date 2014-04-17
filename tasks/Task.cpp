@@ -132,7 +132,7 @@ bool Task::configureHook()
         if(range.max.hasPosition())
             servo_limits.max_pos = (range.max.position + status.positionOffset) * status.positionScale;
         else
-            servo_limits.max_pos = 1023;
+            servo_limits.max_pos = status.positionRange;
 
         if(range.max.hasSpeed())
             servo_limits.max_speed = status.speedScale * range.max.speed;
