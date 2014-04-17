@@ -69,6 +69,9 @@ namespace servo_dynamixel {
 
         base::Time stamp_;
 
+        /** Output error status */
+        void printErrorStatus(ErrorStatus status);
+
     public:
         /** TaskContext constructor for Task
          * \param name Name of the task. This name needs to be unique to make it identifiable via nameservices.

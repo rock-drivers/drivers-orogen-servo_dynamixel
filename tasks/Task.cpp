@@ -282,8 +282,9 @@ void Task::updateHook()
             // and write the updated goal position
             if(!dynamixel_.setGoalPosition( pos ))
             {
-                LOG_WARN_S << "Set position " << pos
-                            << "  for servo id " << id << " failed." << std::endl;
+                LOG_ERROR("Set position %i (%f rad) for servo id %i failed! Min Pos: %f, Max Pos: %f, Offset: %f",
+                          pos, target.position, id, servoLimit.min_pos, servoLimit.max_pos, status.positionOffset);
+                printErrorStatus(dynamixel_.getErrorStatus());
                 throw std::runtime_error("could not set target position for servo");
             }
         }
@@ -296,15 +297,18 @@ void Task::updateHook()
             else
             {
                 if(speed < 0 ||
-                    speed > servoLimit.max_speed)
+                   speed > servoLimit.max_speed)
                 {
                     LOG_ERROR("Target speed of servo %i is out of bounds: Min Speed: %i, Max Speed: %i, Target Speed: %i", id, 0, servoLimit.max_speed, speed);
                     throw std::invalid_argument("Target Speed out of bounds");
                 }
             }
 
-            if (!dynamixel_.setControlTableEntry("Moving Speed", speed))
+            if (!dynamixel_.setControlTableEntry("Moving Speed", speed)){
+                LOG_ERROR("Set speed %i for servo id %i failed. Max speed is: %f", speed, id, servoLimit.max_speed);
+                printErrorStatus(dynamixel_.getErrorStatus());
                 throw std::runtime_error("could not set speed value for servo");
+            }
         }
 
         if( target.hasEffort() )
@@ -326,13 +330,20 @@ void Task::updateHook()
             if( effort == 0 )
             {
                 // disable the servo
-                dynamixel_.setControlTableEntry("Torque Enable", 0);
+                if(!dynamixel_.setControlTableEntry("Torque Enable", 0)){
+                    LOG_ERROR("Set Torque Enable 0 for servo id %i failed", id);
+                    printErrorStatus(dynamixel_.getErrorStatus());
+                    throw std::runtime_error("Could not set target effort for servo");
+                }
                 status.enabled = false;
             }
             else
             {
-                if (!dynamixel_.setControlTableEntry("Max Torque", effort))
+                if (!dynamixel_.setControlTableEntry("Max Torque", effort)){
+                    LOG_ERROR("Set effort %i for servo id %i failed", effort, id);
+                    printErrorStatus(dynamixel_.getErrorStatus());
                     throw std::runtime_error("could not set target effort for servo");
+                }
             }
         }
 
@@ -412,6 +423,18 @@ void Task::readJointStatus()
 
         ++i;
     }
+}
+
+void Task::printErrorStatus(ErrorStatus status)
+{
+    LOG_ERROR("Has error: %i", (int)status.hasError());
+    LOG_ERROR("angle_limit_error: %i", (int)status.angleLimitError);
+    LOG_ERROR("checksumError: %i", (int)status.checksumError);
+    LOG_ERROR("inputVoltageError: %i", (int)status.inputVoltageError);
+    LOG_ERROR("instructionError: %i", (int)status.instructionError);
+    LOG_ERROR("overheatingError: %i", (int)status.overheatingError);
+    LOG_ERROR("overloadError: %i", (int)status.overloadError);
+    LOG_ERROR("rangeError: %i", (int)status.rangeError);
 }
 
 void Task::errorHook()
