@@ -3,6 +3,7 @@
 #include "Task.hpp"
 #include <boost/foreach.hpp>
 #include <base/Logging.hpp>
+#include <base/commands/Joints.hpp>
 
 using namespace servo_dynamixel;
 
