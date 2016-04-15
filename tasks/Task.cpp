@@ -280,8 +280,15 @@ void Task::updateHook()
                 }
             }
 
+            int counter = 0;
+            
+            while(counter < 10 && !dynamixel_.setGoalPosition( pos ))
+            {
+                counter++;
+            }
+            
             // and write the updated goal position
-            if(!dynamixel_.setGoalPosition( pos ))
+            if(counter >= 10)
             {
                 LOG_ERROR("Set position %i (%f rad) for servo id %i failed! Min Pos: %f, Max Pos: %f, Offset: %f",
                           pos, target.position, id, servoLimit.min_pos, servoLimit.max_pos, status.positionOffset);
