@@ -14,8 +14,8 @@ puts "using config file '#{config_file}' with configuration '#{configuration}'"
 
 Orocos.initialize
 
-Orocos::Process.run 'servo_dynamixel::Task' => 'dynamixel_task', 'output' => nil do |p|
-    driver = p.task 'dynamixel_task'
+Orocos::Process.run 'servo_dynamixel::Task' => 'dynamixel_task', :output => nil do 
+    driver = Orocos.get 'dynamixel_task'
 
     Orocos.apply_conf_file(driver, config_file, [configuration])
 
