@@ -33,13 +33,10 @@ bool Task::configureHook()
         return false;
 
     // try to open the device first
-    Dynamixel::Configuration dynamixel_config;
-    dynamixel_config.mFilename= _device.value();
-    dynamixel_config.mBaudrate = _baudrate.value();
     dynamixel_.setNumberRetries( _package_retry_count.value() );
     dynamixel_.setTimeout(_timeout.value());
 
-    if(!dynamixel_.init(&dynamixel_config))
+    if(!dynamixel_.init(_device.value()))
     {
         LOG_ERROR( "Cannot open device '%s'.  %s", _device.value().c_str(), strerror(errno) );
         return false;
