@@ -21,8 +21,6 @@ Task::~Task()
 {
 }
 
-
-
 /// The following lines are template definitions for the various state machine
 // hooks defined by Orocos::RTT. See Task.hpp for more detailed
 // documentation about them.
@@ -60,6 +58,7 @@ bool Task::configureHook()
         status.positionRange = sc.positionRange;
         status.speedScale = sc.speedScale;
         status.effortScale = sc.effortScale;
+        status.reverse = sc.reverse;
 
         // add it to the driver
         dynamixel_.addServo(id);
@@ -102,13 +101,13 @@ bool Task::configureHook()
                 << std::endl;
 
         // set control value A,B,C,D,E (see RX-28 manual)
-        if (!dynamixel_.setControlTableEntry("CW Compliance Slope", sc.cwComplianceSlope ))
+        if (!dynamixel_.setControlTableEntry("CW Compliance Slope", sc.cwComplianceSlope )) // P Gain Byte 1
             return false;
-        if (!dynamixel_.setControlTableEntry("CW Compliance Margin", sc.cwComplianceMargin))
+        if (!dynamixel_.setControlTableEntry("CW Compliance Margin", sc.cwComplianceMargin)) // D Gain
             return false;
-        if (!dynamixel_.setControlTableEntry("CCW Compliance Margin", sc.ccwComplianceMargin))
+        if (!dynamixel_.setControlTableEntry("CCW Compliance Margin", sc.ccwComplianceMargin)) // I Gain
             return false;
-        if (!dynamixel_.setControlTableEntry("CCW Compliance Slope", sc.ccwComplianceSlope))
+        if (!dynamixel_.setControlTableEntry("CCW Compliance Slope", sc.ccwComplianceSlope)) // P Gain Byte 2
             return false;
         if (!dynamixel_.setControlTableEntry("Punch", sc.punch))
             return false;
@@ -127,7 +126,7 @@ bool Task::configureHook()
         else
             servo_limits.min_pos = 0;
 
-        if(range.max.hasPosition())
+        if(range.max.hasPosition()) 
             servo_limits.max_pos = (range.max.position + status.positionOffset) * status.positionScale;
         else
             servo_limits.max_pos = status.positionRange;
@@ -263,7 +262,7 @@ void Task::updateHook()
             }
 
             uint16_t pos = (target.position + status.positionOffset) * status.positionScale;
-
+           
             //Check joint limits
             if(_cap_at_limits.value())
                 pos = std::max( std::min( pos, servoLimit.max_pos ), servoLimit.min_pos);
@@ -275,6 +274,11 @@ void Task::updateHook()
                     LOG_ERROR("Target position of servo %i is out of bounds: Min Pos: %i, Max Pos: %i, Target Pos: %i", id, servoLimit.min_pos, servoLimit.max_pos, pos);
                     throw std::invalid_argument("Target position out of bounds");
                 }
+            }
+            
+            // Reverse direction of rotation if 'reverse' is set.
+            if(status.reverse) {
+                pos = status.positionRange - pos;
             }
 
             // and write the updated goal position

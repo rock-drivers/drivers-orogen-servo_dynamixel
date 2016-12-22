@@ -27,6 +27,7 @@ namespace servo_dynamixel {
 	float speedScale;
 	float effortScale;
         ServoLimits limits;
+        bool reverse;
     };
 
 
