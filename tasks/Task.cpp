@@ -120,16 +120,28 @@ bool Task::configureHook()
         if(limits.size() == _servo_config.value().size())
             range = limits[limit_prop_count++];
 
-        //If a limit is not given it will be set to default (Position to (0,1023), max speed to 1023, torque limit to 1023)
-        if(range.min.hasPosition())
+        // If a limit is not given it will be set to default (Position to (0,1023), max speed to 1023, torque limit to 1023)
+        if(range.min.hasPosition()) {
             servo_limits.min_pos = (range.min.position + status.positionOffset) * status.positionScale;
-        else
+        } else {
             servo_limits.min_pos = 0;
+        }
 
-        if(range.max.hasPosition()) 
+        if(range.max.hasPosition()) { 
             servo_limits.max_pos = (range.max.position + status.positionOffset) * status.positionScale;
-        else
+        } else {
             servo_limits.max_pos = status.positionRange;
+        }
+
+        // If the motor is reversed the position limits have to be adapted as well.
+        // E.g. old limits: 3000 to 4000 with range 4000. New limits: 0 to 1000.  
+        if(status.reverse) {
+            servo_limits.min_pos = status.positionRange - servo_limits.min_pos;
+            servo_limits.max_pos = status.positionRange - servo_limits.max_pos;
+            uint16_t pos_tmp = servo_limits.min_pos;
+            servo_limits.min_pos = servo_limits.max_pos;
+            servo_limits.max_pos = pos_tmp;
+        }
 
         if(range.max.hasSpeed())
             servo_limits.max_speed = status.speedScale * range.max.speed;
