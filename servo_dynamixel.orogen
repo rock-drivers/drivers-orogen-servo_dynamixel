@@ -3,6 +3,7 @@ name "servo_dynamixel"
 # version "0.1"
 
 using_library "dynamixel"
+using_library "dynamixel_workbench"
 import_types_from "base"
 import_types_from "dynamixel/dynamixel_types.hpp"
 import_types_from "base/JointTransform.hpp"

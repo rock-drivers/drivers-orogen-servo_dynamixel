@@ -4,30 +4,21 @@
 #define SERVO_DYNAMIXEL_TASK_TASK_HPP
 
 #include "servo_dynamixel/TaskBase.hpp"
-#include <dynamixel/dynamixel.h>
+//#include <dynamixel/dynamixel.h>
+#include <dynamixel_workbench_toolbox/dynamixel_workbench.h>
 #include <map>
 
 namespace servo_dynamixel {
-
-    struct ServoLimits{
-            uint16_t min_pos;
-            uint16_t max_pos;
-            uint16_t max_speed;
-            uint16_t max_effort;
-        };
 
     /** store the status of the servo */
     struct ServoStatus
     {
 	int id;
 	bool enabled;
-	float positionScale;
-	float positionOffset;
-	float positionRange;
-	float speedScale;
-	float effortScale;
-        ServoLimits limits;
-        bool reverse;
+    ModelInfo model_info;
+    bool reverse;
+    float protocol_version;
+    base::JointLimitRange limit;
     };
 
 
@@ -53,7 +44,7 @@ namespace servo_dynamixel {
     protected:
 
 	/** driver instance */
-	Dynamixel dynamixel_;
+    DynamixelWorkbench dynamixel_;
 
 	/** a mapping of name to ServoConfiguration */
 	std::map<std::string, ServoStatus> status_map;
@@ -71,7 +62,7 @@ namespace servo_dynamixel {
         base::Time stamp_;
 
         /** Output error status */
-        void printErrorStatus(ErrorStatus status);
+        void printErrorStatus(const int32_t& id);
 
     public:
         /** TaskContext constructor for Task

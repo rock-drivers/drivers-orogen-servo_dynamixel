@@ -8,5 +8,24 @@
  * which case you do not need this file
  */
 
+#include <string>
+#include <vector>
+
+namespace servo_dynamixel{
+typedef struct
+{
+    // ID of the motor
+    uint8_t id;
+    // Name of item.
+    // See Dynamixel Wizard, the monitor example from dynamixel-workbench for valid names for your device
+    std::string item_name;
+    // Int representation of the value to set
+    uint8_t value;
+} ControlTableAssignment;
+
+typedef std::vector<ControlTableAssignment> DynamixelConfig;
+
+};
+
 #endif
 
